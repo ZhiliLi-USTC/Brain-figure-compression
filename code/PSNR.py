@@ -31,54 +31,72 @@ class ComputePSNR:
             It returns the average PSNR which data type is float.
         """
         PsnrTotal=0
+        MaxVal=2**8-1  #the max value in a 8 bits picture
         for i in range(self.StartNumber,self.EndNumber+1):
-            ImgNotCompressedName=PathNotProcessed+'\\'+'slice_0_0_'+str(i)+'.jpg'
+            ImgNotCompressedName=PathNotProcessed+'\\'+'0_0_'+str(i)+'.jpg'
             ImgCompressedName=PathProcessed+'\\'+'0_0_'+str(i)+'.jpg'
-            ImgNotCompressedArray=cv2.imread(ImgNotCompressedName,flags=0)
-            ImgCompressedArray=cv2.imread(ImgCompressedName,flags=0)
+            ImgNotCompressedArray=cv2.imread(ImgNotCompressedName,flags=0).astype(np.int64)
+            ImgCompressedArray=cv2.imread(ImgCompressedName,flags=0).astype(np.int64)
             ArrayRowNum=ImgCompressedArray.shape[0]
             ArrayColNum=ImgCompressedArray.shape[1]
-            diff=np.square(np.subtract(ImgCompressedArray,ImgNotCompressedArray)).sum()
-            rmse=diff/ArrayRowNum/ArrayColNum
-            Psnr=10*np.log10(255*255/rmse)
+            #diff=np.square(ImgCompressedArray-ImgNotCompressedArray)
+            diff=np.square(cv2.absdiff(ImgCompressedArray,ImgNotCompressedArray))
+            diff_sum=diff.sum()
+            MSE=diff_sum/ArrayRowNum/ArrayColNum
+            Psnr=10*np.log10(MaxVal*MaxVal/MSE)
             PsnrTotal=PsnrTotal+Psnr
         PsnrAve=PsnrTotal/(self.EndNumber-self.StartNumber+1)
         print('PSNR:%f dB'%PsnrAve)
         return PsnrAve
 
 
-    def TiffPSNR(self,PathSource,PathSetZero):
-        """Compute average PSNR of the 16 bits tiff files in the two folders.
+    def TiffPSNR(self,PathFirst,PathSecond,Bitnum):
+        """Compute average PSNR of the specific bit tiff files in the two folders.
 
         Args:
-            PathSource: The path of one tiff file folder which includes 16 bits tiff files.
-            PathCompressed: The path of another tiff file folder which includes 16 bits tiff files.
+            PathFirst: The path of one tiff file folder which includes specific bit tiff files.
+            PathSecond: The path of another tiff file folder which includes specific bit tiff files.
+            Bitnum:the bit number of the input tiff file.
 
         Returns:
             It returns the average PSNR which data type is float.
         """
         PsnrTotal=0
+        MaxVal=2**Bitnum-1
+        count=0
         for i in range(self.StartNumber,self.EndNumber+1):
-            FileSource=PathSource+'\\'+'slice_0_0_'+str(i)+'.tiff'
-            FileSetZero=PathSetZero+'\\'+'SetZero_'+'slice_0_0_'+str(i)+'.tiff'
-            TiffSource=TIFF.open(FileSource,'r')
-            TiffSetZero=TIFF.open(FileSetZero,'r')
-            ArraySource=TiffSource.read_image()
-            ArraySetZero=TiffSetZero.read_image()
-            ArrayRawNum=ArraySource.shape[0]
-            ArrayColNum=ArraySource.shape[1]
-            diff=np.square(np.subtract(ArraySetZero,ArraySource)).sum()
-            rmse=diff/ArrayRawNum/ArrayColNum
-            Psnr=20*np.log10(65535/np.sqrt(rmse))
-            PsnrTotal=PsnrTotal+Psnr
-        PsnrAve=PsnrTotal/(self.EndNumber-self.StartNumber+1)
-        print('PSNR:%f dB'%PsnrAve)
+            FileFirst=PathFirst+'\\'+'0_0_'+str(i)+'.tiff'
+            FileSecond=PathSecond+'\\'+'0_0_'+str(i)+'.tiff'
+            TiffFirst=TIFF.open(FileFirst,'r')
+            TiffSecond=TIFF.open(FileSecond,'r')
+            ArrayFirst=TiffFirst.read_image().astype(np.int64)
+            ArraySecond=TiffSecond.read_image().astype(np.int64)
+            #ArrayFirst = TiffFirst.read_image()
+            #ArraySecond = TiffSecond.read_image()
+            ArrayRawNum=ArrayFirst.shape[0]
+            ArrayColNum=ArrayFirst.shape[1]
+            diff=np.square(cv2.absdiff(ArrayFirst,ArraySecond))
+            #diff=np.square(ArraySecond-ArrayFirst)
+            diff_sum=diff.sum()
+            if diff_sum != 0:
+                MSE=diff_sum/ArrayRawNum/ArrayColNum
+                Psnr=10*np.log10(MaxVal*MaxVal/MSE)
+                PsnrTotal=PsnrTotal+Psnr
+                count=count+1
+        PsnrAve=PsnrTotal/(count)
+        print('{count} tiff average PSNR:{psnr} dB'.format(count=count,psnr=PsnrAve))
         return PsnrAve
 
 
 #for debug
 if __name__=="__main__":
-    PathNOtCompressed="D:\study\Ometiff\\0_0_jpg"
-    PathCompressed="D:\study\Ometiff\\0_0_jpg_decompress"
+    PathHighDe="D:\study\Ometiff\\0_0_tiff_split\high_decompress"
+    PathHigh="D:\study\Ometiff\\0_0_tiff_split\high8bits"
+    PathLowDe = "D:\study\Ometiff\\0_0_tiff_split\low_decompress"
+    PathLow = "D:\study\Ometiff\\0_0_tiff_split\low8bits"
     psnr=ComputePSNR()
-    psnr.JpgPSNR(PathNOtCompressed,PathCompressed)
+    #print('high')
+    #psnr.TiffPSNR(PathHigh,PathHighDe,8)
+    #print('low:')
+    #psnr.TiffPSNR(PathLow,PathLowDe,8)
+    psnr.TiffPSNR("D:\study\Ometiff\\0_0_tiff","D:\study\Ometiff\\0_0_tiff_split\merge_new",16)
