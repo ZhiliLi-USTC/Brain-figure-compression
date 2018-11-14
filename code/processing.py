@@ -4,7 +4,6 @@ import os
 import glob
 import numpy as np
 from libtiff import TIFF
-import time
 import subprocess
 import PSNR
 
@@ -30,9 +29,7 @@ def extract_to_single_file(path_exe, path_source, path_file_out, file_type):
                 filename = str(c) + '_' + str(z) + '_' + str(t) + '.' + file_type
                 com = path_exe + ' -s ' + path_source + ' -o ' + path_out + '\\'\
                       + filename + ' -d ' + str(c) + ',' + str(z) + ',' + str(t)
-                ret = subprocess.Popen(com, stdout=subprocess.PIPE)  #call the external exe
-    #end=time.clock()
-    #print("run time:{time}s".format(time=end-start))
+                subprocess.Popen(com, stdout=subprocess.PIPE)  #call the external exe
 
 
 def tiff_low_four_bits_set_zero(path_tiff_source, path_tiff_out):
